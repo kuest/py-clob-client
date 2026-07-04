@@ -109,7 +109,9 @@ class TestUtilities(TestCase):
     def test_order_to_json_accepts_gtd_expiration_above_minimum(self):
         signer = Signer(private_key=PRIVATE_KEY, chain_id=AMOY)
         builder = OrderBuilder(signer, funder=DEPOSIT_WALLET)
-        expiration = int(time()) + MIN_GTD_EXPIRATION_SECONDS + EXPIRATION_BUFFER_SECONDS
+        expiration = (
+            int(time()) + MIN_GTD_EXPIRATION_SECONDS + EXPIRATION_BUFFER_SECONDS
+        )
         order = builder.create_order(
             order_args=OrderArgs(
                 token_id="100",
