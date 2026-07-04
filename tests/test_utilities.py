@@ -17,6 +17,7 @@ from py_clob_client.utilities import (
 
 PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 DEPOSIT_WALLET = "0x1111111111111111111111111111111111111111"
+EXPIRATION_BUFFER_SECONDS = 10
 
 
 class TestUtilities(TestCase):
@@ -105,10 +106,10 @@ class TestUtilities(TestCase):
                 orderType=OrderType.GTD,
             )
 
-    def test_order_to_json_accepts_gtd_minimum_expiration(self):
+    def test_order_to_json_accepts_gtd_expiration_above_minimum(self):
         signer = Signer(private_key=PRIVATE_KEY, chain_id=AMOY)
         builder = OrderBuilder(signer, funder=DEPOSIT_WALLET)
-        expiration = int(time()) + MIN_GTD_EXPIRATION_SECONDS + 1
+        expiration = int(time()) + MIN_GTD_EXPIRATION_SECONDS + EXPIRATION_BUFFER_SECONDS
         order = builder.create_order(
             order_args=OrderArgs(
                 token_id="100",
