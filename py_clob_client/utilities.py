@@ -1,10 +1,13 @@
 import hashlib
 import json
 from dataclasses import asdict
+from time import time
 
-from .clob_types import OrderBookSummary, OrderSummary, TickSize
+from .clob_types import OrderBookSummary, OrderSummary, OrderType, TickSize
 from .constants import BYTES32_ZERO
 from .order_utils import SignatureTypeV2, Side, SideString
+
+MIN_GTD_EXPIRATION_SECONDS = 3 * 60
 
 
 def parse_raw_orderbook_summary(raw_obs: any) -> OrderBookSummary:
@@ -67,6 +70,8 @@ def order_to_json(order, owner, orderType, post_only: bool = False) -> dict:
             "Kuest order submission supports only Deposit Wallet signature type 3"
         )
 
+    _validate_gtd_expiration(order.expiration, orderType)
+
     order_payload = asdict(order)
     order_payload["salt"] = int(order.salt)
     order_payload["side"] = (
@@ -80,6 +85,20 @@ def order_to_json(order, owner, orderType, post_only: bool = False) -> dict:
         "orderType": orderType,
         "postOnly": post_only,
     }
+
+
+def _validate_gtd_expiration(expiration, orderType):
+    if orderType != OrderType.GTD:
+        return
+
+    try:
+        expiration_timestamp = int(expiration)
+    except (TypeError, ValueError):
+        raise ValueError("GTD expiration must be a Unix timestamp in seconds")
+
+    minimum_expiration = int(time()) + MIN_GTD_EXPIRATION_SECONDS
+    if expiration_timestamp < minimum_expiration:
+        raise ValueError("GTD expiration must be at least 3 minutes in the future")
 
 
 def is_tick_size_smaller(a: TickSize, b: TickSize) -> bool:

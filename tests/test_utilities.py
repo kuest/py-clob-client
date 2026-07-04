@@ -1,3 +1,4 @@
+from time import time
 from unittest import TestCase
 
 from py_clob_client.clob_types import CreateOrderOptions, OrderArgs, OrderType
@@ -6,6 +7,7 @@ from py_clob_client.order_builder.builder import OrderBuilder
 from py_clob_client.order_builder.constants import BUY
 from py_clob_client.signer import Signer
 from py_clob_client.utilities import (
+    MIN_GTD_EXPIRATION_SECONDS,
     generate_orderbook_summary_hash,
     is_tick_size_smaller,
     order_to_json,
@@ -15,6 +17,7 @@ from py_clob_client.utilities import (
 
 PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
 DEPOSIT_WALLET = "0x1111111111111111111111111111111111111111"
+EXPIRATION_BUFFER_SECONDS = 10
 
 
 class TestUtilities(TestCase):
@@ -81,3 +84,49 @@ class TestUtilities(TestCase):
         self.assertNotIn("feeRateBps", order_payload)
         self.assertNotIn("nonce", order_payload)
         self.assertNotIn("taker", order_payload)
+
+    def test_order_to_json_rejects_short_gtd_expiration(self):
+        signer = Signer(private_key=PRIVATE_KEY, chain_id=AMOY)
+        builder = OrderBuilder(signer, funder=DEPOSIT_WALLET)
+        order = builder.create_order(
+            order_args=OrderArgs(
+                token_id="100",
+                price=0.5,
+                size=100,
+                side=BUY,
+                expiration=int(time()) + 60,
+            ),
+            options=CreateOrderOptions(tick_size="0.1", neg_risk=False),
+        )
+
+        with self.assertRaisesRegex(ValueError, "at least 3 minutes"):
+            order_to_json(
+                order=order,
+                owner="owner-api-key",
+                orderType=OrderType.GTD,
+            )
+
+    def test_order_to_json_accepts_gtd_expiration_above_minimum(self):
+        signer = Signer(private_key=PRIVATE_KEY, chain_id=AMOY)
+        builder = OrderBuilder(signer, funder=DEPOSIT_WALLET)
+        expiration = (
+            int(time()) + MIN_GTD_EXPIRATION_SECONDS + EXPIRATION_BUFFER_SECONDS
+        )
+        order = builder.create_order(
+            order_args=OrderArgs(
+                token_id="100",
+                price=0.5,
+                size=100,
+                side=BUY,
+                expiration=expiration,
+            ),
+            options=CreateOrderOptions(tick_size="0.1", neg_risk=False),
+        )
+
+        payload = order_to_json(
+            order=order,
+            owner="owner-api-key",
+            orderType=OrderType.GTD,
+        )
+
+        self.assertEqual(payload["order"]["expiration"], str(expiration))
