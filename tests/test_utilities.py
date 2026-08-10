@@ -44,9 +44,7 @@ class TestUtilities(TestCase):
 
     def test_dynamic_fee_sizing_keeps_covered_amount(self):
         self.assertEqual(
-            adjust_market_buy_amount_for_dynamic_fees(
-                100.0, 0.5, 104.5, 0.07, 1, 100
-            ),
+            adjust_market_buy_amount_for_dynamic_fees(100.0, 0.5, 104.5, 0.07, 1, 100),
             100.0,
         )
 
