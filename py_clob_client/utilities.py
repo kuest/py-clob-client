@@ -136,7 +136,37 @@ def adjust_market_buy_amount_for_fees(
         return amount
 
     adjusted = user_usdc_balance / (1 + total_fee_rate)
-    if adjusted <= 0:
+    if not adjusted > 0:
+        raise ValueError(
+            f"user_usdc_balance {user_usdc_balance} too small to cover fees at price {price}"
+        )
+    return adjusted
+
+
+def adjust_market_buy_amount_for_dynamic_fees(
+    amount: float,
+    price: float,
+    user_usdc_balance: float,
+    rate: float,
+    exponent: float,
+    builder_taker_fee_rate_bps: int,
+) -> float:
+    """Fit a BUY amount plus Kuest's dynamic and builder's flat fees in balance."""
+    if not 0 < price < 1:
+        raise ValueError(
+            f"price {price} must be between 0 and 1 for dynamic fee calculation"
+        )
+
+    effective_share_fee_rate = rate * (price * (1 - price)) ** exponent
+    platform_cost_rate = effective_share_fee_rate / price
+    builder_cost_rate = builder_taker_fee_rate_bps / 10_000
+    total_cost_rate = platform_cost_rate + builder_cost_rate
+    total_cost = amount * (1 + total_cost_rate)
+    if user_usdc_balance >= total_cost:
+        return amount
+
+    adjusted = user_usdc_balance / (1 + total_cost_rate)
+    if not adjusted > 0:
         raise ValueError(
             f"user_usdc_balance {user_usdc_balance} too small to cover fees at price {price}"
         )

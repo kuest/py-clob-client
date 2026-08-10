@@ -118,7 +118,7 @@ from .utilities import (
     is_tick_size_smaller,
     price_valid,
     builder_code_to_bytes32,
-    adjust_market_buy_amount_for_fees,
+    adjust_market_buy_amount_for_dynamic_fees,
 )
 from .rfq import RfqClient
 from .site_config import GEOBLOCK_HOST, SITE_CONFIG, get_site_order_context
@@ -602,11 +602,12 @@ class ClobClient:
             builder_fee = self.__builder_fee_rates.get(
                 order_args.builder_code, BuilderFeeRate()
             )
-            order_args.amount = adjust_market_buy_amount_for_fees(
+            order_args.amount = adjust_market_buy_amount_for_dynamic_fees(
                 order_args.amount,
                 order_args.price,
                 order_args.user_usdc_balance,
-                fee_info.taker_rate_bps,
+                fee_info.rate,
+                fee_info.exponent,
                 builder_fee.taker,
             )
 

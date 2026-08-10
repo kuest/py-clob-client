@@ -7,6 +7,7 @@ from py_clob_client.order_builder.builder import OrderBuilder
 from py_clob_client.order_builder.constants import BUY
 from py_clob_client.signer import Signer
 from py_clob_client.utilities import (
+    adjust_market_buy_amount_for_dynamic_fees,
     MIN_GTD_EXPIRATION_SECONDS,
     generate_orderbook_summary_hash,
     is_tick_size_smaller,
@@ -21,6 +22,34 @@ EXPIRATION_BUFFER_SECONDS = 10
 
 
 class TestUtilities(TestCase):
+    def test_dynamic_fee_sizing_matches_production_categories(self):
+        price = 0.5
+        balance = 100.0
+        builder_fee_bps = 100
+        for category, rate in {
+            "crypto": 0.07,
+            "sports": 0.05,
+            "finance": 0.04,
+            "general": 0.05,
+            "geopolitics": 0.0,
+        }.items():
+            with self.subTest(category=category):
+                adjusted = adjust_market_buy_amount_for_dynamic_fees(
+                    balance, price, balance, rate, 1, builder_fee_bps
+                )
+                shares = adjusted / price
+                kuest_fee = shares * rate * price * (1 - price)
+                builder_fee = adjusted * builder_fee_bps / 10_000
+                self.assertAlmostEqual(adjusted + kuest_fee + builder_fee, balance)
+
+    def test_dynamic_fee_sizing_keeps_covered_amount(self):
+        self.assertEqual(
+            adjust_market_buy_amount_for_dynamic_fees(
+                100.0, 0.5, 104.5, 0.07, 1, 100
+            ),
+            100.0,
+        )
+
     def test_parse_raw_orderbook_summary_and_hash(self):
         raw_obs = {
             "market": "0xaabbcc",
