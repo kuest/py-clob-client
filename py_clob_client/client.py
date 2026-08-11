@@ -118,6 +118,7 @@ from .utilities import (
     is_tick_size_smaller,
     price_valid,
     builder_code_to_bytes32,
+    parse_builder_fee_rate_response,
     adjust_market_buy_amount_for_dynamic_fees,
 )
 from .rfq import RfqClient
@@ -608,7 +609,7 @@ class ClobClient:
                 order_args.user_usdc_balance,
                 fee_info.rate,
                 fee_info.exponent,
-                builder_fee.taker,
+                builder_fee.taker_share,
             )
 
         neg_risk = (
@@ -1111,12 +1112,8 @@ class ClobClient:
         min_tick_size = result.get("mts") or result.get("min_tick_size")
         neg_risk = result.get("nr", result.get("neg_risk", False))
         fd = result.get("fd") or {}
-        maker_rate_bps = int(
-            fd.get("maker_fee_rate_bps") or fd.get("builder_maker_fee_rate_bps") or 0
-        )
-        taker_rate_bps = int(
-            fd.get("taker_fee_rate_bps") or fd.get("builder_taker_fee_rate_bps") or 0
-        )
+        maker_rate_bps = int(fd.get("maker_fee_rate_bps") or 0)
+        taker_rate_bps = int(fd.get("taker_fee_rate_bps") or 0)
 
         for token in tokens:
             if not token:
@@ -1201,17 +1198,14 @@ class ClobClient:
 
     def __ensure_builder_fee_rate_cached(self, builder_code: str):
         normalized_builder_code = builder_code_to_bytes32(builder_code)
-        if normalized_builder_code == BYTES32_ZERO:
-            return
         if normalized_builder_code in self.__builder_fee_rates:
             return
 
         result = get(
             "{}{}{}".format(self.host, GET_BUILDER_FEE_RATE, normalized_builder_code)
         )
-        self.__builder_fee_rates[normalized_builder_code] = BuilderFeeRate(
-            maker=int(result.get("builder_maker_fee_rate_bps") or 0),
-            taker=int(result.get("builder_taker_fee_rate_bps") or 0),
+        self.__builder_fee_rates[normalized_builder_code] = (
+            parse_builder_fee_rate_response(result)
         )
 
     def __ensure_market_info_cached(self, token_id: str):

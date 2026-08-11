@@ -1,18 +1,25 @@
 from time import time
 from unittest import TestCase
 
-from py_clob_client.clob_types import CreateOrderOptions, OrderArgs, OrderType
+from py_clob_client.clob_types import (
+    BuilderFeeRate,
+    CreateOrderOptions,
+    OrderArgs,
+    OrderType,
+)
 from py_clob_client.constants import AMOY
 from py_clob_client.order_builder.builder import OrderBuilder
 from py_clob_client.order_builder.constants import BUY
 from py_clob_client.signer import Signer
 from py_clob_client.utilities import (
     adjust_market_buy_amount_for_dynamic_fees,
+    calculate_dynamic_fee_breakdown,
     MIN_GTD_EXPIRATION_SECONDS,
     generate_orderbook_summary_hash,
     is_tick_size_smaller,
     order_to_json,
     parse_raw_orderbook_summary,
+    parse_builder_fee_rate_response,
     price_valid,
 )
 
@@ -22,29 +29,103 @@ EXPIRATION_BUFFER_SECONDS = 10
 
 
 class TestUtilities(TestCase):
+    def test_dynamic_fee_crypto_golden_prices(self):
+        for price, expected_base in [
+            (0.01, 0.04366),
+            (0.1, 0.3969),
+            (0.5, 1.1025),
+            (0.9, 0.3969),
+            (0.99, 0.04366),
+        ]:
+            with self.subTest(price=price):
+                self.assertEqual(
+                    calculate_dynamic_fee_breakdown(100, price, 0.0441, 1)[
+                        "kuest_fee_base"
+                    ],
+                    expected_base,
+                )
+
+    def test_dynamic_fee_category_midpoint_fixtures(self):
+        for category, rate, expected_base in [
+            ("crypto", 0.0441, 1.1025),
+            ("sports", 0.0315, 0.7875),
+            ("geopolitics", 0.0252, 0.63),
+            ("finance", 0.0252, 0.63),
+            ("general", 0.0315, 0.7875),
+        ]:
+            with self.subTest(category=category):
+                self.assertEqual(
+                    calculate_dynamic_fee_breakdown(100, 0.5, rate, 1)[
+                        "kuest_fee_base"
+                    ],
+                    expected_base,
+                )
+
+    def test_dynamic_fee_operator_share_fixtures(self):
+        for share, total_fee, operator_fee, kuest_fee in [
+            (2000, 1.37813, 0.275626, 1.102504),
+            (3000, 1.575, 0.4725, 1.1025),
+            (4500, 2.00455, 0.902047, 1.102503),
+        ]:
+            with self.subTest(share=share):
+                self.assertEqual(
+                    calculate_dynamic_fee_breakdown(100, 0.5, 0.0441, 1, share),
+                    {
+                        "kuest_fee_base": 1.1025,
+                        "kuest_fee": kuest_fee,
+                        "operator_fee": operator_fee,
+                        "total_fee": total_fee,
+                    },
+                )
+
+    def test_dynamic_fee_uses_unregistered_builder_fallback(self):
+        self.assertEqual(
+            calculate_dynamic_fee_breakdown(100, 0.5, 0.0441, 1),
+            calculate_dynamic_fee_breakdown(100, 0.5, 0.0441, 1, 3000),
+        )
+
+    def test_builder_fee_response_fixtures(self):
+        for maker_flat in (0, 100):
+            with self.subTest(maker_flat=maker_flat):
+                self.assertEqual(
+                    parse_builder_fee_rate_response(
+                        {
+                            "builder_taker_fee_share_bps": 3000,
+                            "builder_maker_flat_fee_bps": maker_flat,
+                        }
+                    ),
+                    BuilderFeeRate(maker_flat=maker_flat, taker_share=3000),
+                )
+        self.assertEqual(parse_builder_fee_rate_response({}), BuilderFeeRate())
+
     def test_dynamic_fee_sizing_matches_production_categories(self):
         price = 0.5
         balance = 100.0
-        builder_fee_bps = 100
+        builder_share_bps = 3000
         for category, rate in {
-            "crypto": 0.07,
-            "sports": 0.05,
-            "finance": 0.04,
-            "general": 0.05,
-            "geopolitics": 0.0,
+            "crypto": 0.0441,
+            "sports": 0.0315,
+            "finance": 0.0252,
+            "general": 0.0315,
+            "geopolitics": 0.0252,
         }.items():
             with self.subTest(category=category):
                 adjusted = adjust_market_buy_amount_for_dynamic_fees(
-                    balance, price, balance, rate, 1, builder_fee_bps
+                    balance, price, balance, rate, 1, builder_share_bps
                 )
-                shares = adjusted / price
-                kuest_fee = shares * rate * price * (1 - price)
-                builder_fee = adjusted * builder_fee_bps / 10_000
-                self.assertAlmostEqual(adjusted + kuest_fee + builder_fee, balance)
+                total_fee = calculate_dynamic_fee_breakdown(
+                    adjusted / price,
+                    price,
+                    rate,
+                    1,
+                    builder_share_bps,
+                )["total_fee"]
+                self.assertLessEqual(adjusted + total_fee, balance)
+                self.assertLess(balance - adjusted - total_fee, 0.000002)
 
     def test_dynamic_fee_sizing_keeps_covered_amount(self):
         self.assertEqual(
-            adjust_market_buy_amount_for_dynamic_fees(100.0, 0.5, 104.5, 0.07, 1, 100),
+            adjust_market_buy_amount_for_dynamic_fees(100.0, 0.5, 104, 0.0441, 1, 3000),
             100.0,
         )
 

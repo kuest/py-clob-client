@@ -230,8 +230,8 @@ class FeeInfo:
 
 @dataclass
 class BuilderFeeRate:
-    maker: int = 0
-    taker: int = 0
+    maker_flat: int = 0
+    taker_share: int = 3000
 
 
 @dataclass

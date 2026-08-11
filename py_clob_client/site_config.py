@@ -62,6 +62,12 @@ GEOBLOCK_HOST = "https://geoblock.kuest.com"
 def get_site_order_context() -> dict:
     context = {}
     builder_code = SITE_CONFIG["builder_code"].strip()
+    if SITE_CONFIG["builder_mode"] and (
+        not builder_code or builder_code == ZERO_BYTES32
+    ):
+        raise ValueError(
+            "builder_mode requires a non-zero builder_code in .sdk/site-config.json"
+        )
     if builder_code:
         context["builder_code"] = builder_code
     metadata = SITE_CONFIG["order_metadata"].strip()

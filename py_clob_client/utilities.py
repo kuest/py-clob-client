@@ -1,13 +1,22 @@
 import hashlib
 import json
 from dataclasses import asdict
+from decimal import Decimal, ROUND_CEILING, ROUND_HALF_UP
 from time import time
 
-from .clob_types import OrderBookSummary, OrderSummary, OrderType, TickSize
+from .clob_types import (
+    BuilderFeeRate,
+    OrderBookSummary,
+    OrderSummary,
+    OrderType,
+    TickSize,
+)
 from .constants import BYTES32_ZERO
 from .order_utils import SignatureTypeV2, Side, SideString
 
 MIN_GTD_EXPIRATION_SECONDS = 3 * 60
+FEE_QUANTUM = Decimal("0.00001")
+USDC_SCALE = Decimal("1000000")
 
 
 def parse_raw_orderbook_summary(raw_obs: any) -> OrderBookSummary:
@@ -123,14 +132,77 @@ def builder_code_to_bytes32(builder_code: str = None) -> str:
     raise ValueError("builder_code must be an address or bytes32 hex string")
 
 
+def parse_builder_fee_rate_response(value) -> BuilderFeeRate:
+    response = value if isinstance(value, dict) else {}
+    maker_flat = int(response.get("builder_maker_flat_fee_bps") or 0)
+    taker_share = int(response.get("builder_taker_fee_share_bps") or 3000)
+    if maker_flat < 0:
+        raise ValueError("builder_maker_flat_fee_bps must be non-negative")
+    if taker_share < 0 or taker_share >= 10_000:
+        raise ValueError("builder_taker_fee_share_bps must be between 0 and 9999")
+    return BuilderFeeRate(maker_flat=maker_flat, taker_share=taker_share)
+
+
+def calculate_dynamic_fee_breakdown(
+    shares: float,
+    price: float,
+    rate: float,
+    exponent: float,
+    builder_taker_fee_share_bps: int = 3000,
+) -> dict:
+    """Mirror the CLOB five-decimal fee rounding and on-chain USDC split."""
+    if not 0 < price < 1:
+        raise ValueError(
+            f"price {price} must be between 0 and 1 for dynamic fee calculation"
+        )
+    if (
+        not isinstance(builder_taker_fee_share_bps, int)
+        or builder_taker_fee_share_bps < 0
+        or builder_taker_fee_share_bps >= 10_000
+    ):
+        raise ValueError(
+            "builder_taker_fee_share_bps must be an integer between 0 and 9999"
+        )
+
+    decimal_price = Decimal(str(price))
+    raw_base = (
+        Decimal(str(shares))
+        * Decimal(str(rate))
+        * (decimal_price * (Decimal(1) - decimal_price)) ** Decimal(str(exponent))
+    )
+    if raw_base < FEE_QUANTUM:
+        return {
+            "kuest_fee_base": 0.0,
+            "kuest_fee": 0.0,
+            "operator_fee": 0.0,
+            "total_fee": 0.0,
+        }
+
+    kuest_fee_base = raw_base.quantize(FEE_QUANTUM, rounding=ROUND_HALF_UP)
+    total_fee = (
+        kuest_fee_base * Decimal(10_000) / Decimal(10_000 - builder_taker_fee_share_bps)
+    ).quantize(FEE_QUANTUM, rounding=ROUND_CEILING)
+    total_micro_usdc = int(total_fee * USDC_SCALE)
+    operator_micro_usdc = total_micro_usdc * builder_taker_fee_share_bps // 10_000
+    return {
+        "kuest_fee_base": float(kuest_fee_base),
+        "kuest_fee": float(
+            Decimal(total_micro_usdc - operator_micro_usdc) / USDC_SCALE
+        ),
+        "operator_fee": float(Decimal(operator_micro_usdc) / USDC_SCALE),
+        "total_fee": float(Decimal(total_micro_usdc) / USDC_SCALE),
+    }
+
+
 def adjust_market_buy_amount_for_fees(
     amount: float,
     price: float,
     user_usdc_balance: float,
     kuest_taker_fee_rate_bps: int,
-    builder_taker_fee_rate_bps: int,
+    builder_taker_fee_share_bps: int,
 ) -> float:
-    total_fee_rate = (kuest_taker_fee_rate_bps + builder_taker_fee_rate_bps) / 10_000
+    builder_share = min(9_999, max(0, builder_taker_fee_share_bps)) / 10_000
+    total_fee_rate = kuest_taker_fee_rate_bps / 10_000 / (1 - builder_share)
     total_cost = amount * (1 + total_fee_rate)
     if user_usdc_balance >= total_cost:
         return amount
@@ -149,25 +221,40 @@ def adjust_market_buy_amount_for_dynamic_fees(
     user_usdc_balance: float,
     rate: float,
     exponent: float,
-    builder_taker_fee_rate_bps: int,
+    builder_taker_fee_share_bps: int,
 ) -> float:
-    """Fit a BUY amount plus Kuest's dynamic and builder's flat fees in balance."""
+    """Fit a BUY amount plus the grossed-up dynamic taker fee in balance."""
     if not 0 < price < 1:
         raise ValueError(
             f"price {price} must be between 0 and 1 for dynamic fee calculation"
         )
 
-    effective_share_fee_rate = rate * (price * (1 - price)) ** exponent
-    platform_cost_rate = effective_share_fee_rate / price
-    builder_cost_rate = builder_taker_fee_rate_bps / 10_000
-    total_cost_rate = platform_cost_rate + builder_cost_rate
-    total_cost = amount * (1 + total_cost_rate)
-    if user_usdc_balance >= total_cost:
+    def fee_for_amount(principal: float) -> float:
+        return calculate_dynamic_fee_breakdown(
+            principal / price,
+            price,
+            rate,
+            exponent,
+            builder_taker_fee_share_bps,
+        )["total_fee"]
+
+    if user_usdc_balance >= amount + fee_for_amount(amount):
         return amount
 
-    adjusted = user_usdc_balance / (1 + total_cost_rate)
-    if not adjusted > 0:
+    low = 0
+    high = int(min(amount, user_usdc_balance) * 1_000_000)
+    best = 0
+    while low <= high:
+        mid = (low + high) // 2
+        principal = mid / 1_000_000
+        if principal + fee_for_amount(principal) <= user_usdc_balance:
+            best = mid
+            low = mid + 1
+        else:
+            high = mid - 1
+
+    if best == 0:
         raise ValueError(
             f"user_usdc_balance {user_usdc_balance} too small to cover fees at price {price}"
         )
-    return adjusted
+    return best / 1_000_000
