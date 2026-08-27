@@ -1,7 +1,6 @@
-from typing import Any
 from dataclasses import dataclass, asdict
 from json import dumps
-from typing import Literal, Optional
+from typing import Any, Literal, Optional, TypedDict
 from .constants import BYTES32_ZERO
 from .order_utils.model.order_data_v2 import SignedOrderV2 as SignedOrder
 
@@ -11,6 +10,120 @@ class OrderType(enumerate):
     FOK = "FOK"
     GTD = "GTD"
     FAK = "FAK"
+
+
+class ClobToken(TypedDict, total=False):
+    """Token entry returned by the compact CLOB market-info endpoint."""
+
+    t: str
+    mirror_token_id: str
+    o: str
+    token_id: str
+    outcome: str
+
+
+class ClobFeeDetails(TypedDict, total=False):
+    """Fee descriptor returned in compact CLOB market information."""
+
+    r: float
+    e: int
+    to: bool
+    maker_fee_rate_bps: int | str
+    taker_fee_rate_bps: int | str
+
+
+class ClobMarketInfo(TypedDict, total=False):
+    """Response from ``GET /clob-markets/{condition_id}``.
+
+    The CLOB can return either compact keys (``c``, ``t``, ``mts``) or the
+    expanded keys used by the Kuest fallback response. Both shapes remain
+    dictionaries at runtime; this TypedDict documents the known keys.
+    """
+
+    gst: Optional[str]
+    r: dict[str, Any]
+    c: str
+    condition_id: str
+    mirror_condition_id: str
+    nr: bool
+    neg_risk: bool
+    t: list[Optional[ClobToken]]
+    tokens: list[Optional[ClobToken]]
+    mts: float | str
+    min_tick_size: float | str
+    minimum_tick_size: float | str
+    mos: int | str
+    min_order_size: int | float | str
+    minimum_order_size: int | float | str
+    fd: Optional[ClobFeeDetails]
+    fee_schedule: dict[str, Any]
+    mbf: int | str
+    tbf: int | str
+    rfqe: bool
+    rfq_enabled: bool
+    accepting_orders: bool
+    rewards: dict[str, Any]
+    itode: bool
+    ibce: bool
+    oas: int
+
+
+class MarketToken(TypedDict, total=False):
+    """Token entry returned by the full or simplified market endpoints."""
+
+    token_id: str
+    mirror_token_id: str
+    outcome: str
+    price: float | str
+    winner: bool
+
+
+class MarketResponse(TypedDict, total=False):
+    """Market response fields relevant to market discovery and mirrors."""
+
+    enable_order_book: bool
+    active: bool
+    closed: bool
+    archived: bool
+    accepting_orders: bool
+    condition_id: str
+    creator: str
+    mirror_condition_id: str
+    status: str
+    neg_risk: bool
+    market_id: int
+    question_id: str
+    question: str
+    slug: str
+    description: str
+    market_slug: str
+    end_date_iso: str
+    minimum_order_size: int | float | str
+    minimum_tick_size: int | float | str
+    tokens: list[MarketToken]
+    assets_ids: list[str]
+    outcomes: list[str]
+
+
+class MarketByTokenResponse(TypedDict, total=False):
+    """Response from ``GET /markets-by-token/{token_id}``."""
+
+    condition_id: str
+    creator: str
+    mirror_condition_id: str
+    primary_token_id: str
+    mirror_primary_token_id: str
+    secondary_token_id: str
+    mirror_secondary_token_id: str
+
+
+class MarketListResponse(TypedDict, total=False):
+    """Paginated response returned by CLOB market-list endpoints."""
+
+    data: list[MarketResponse]
+    next_cursor: str
+    limit: int
+    count: int
 
 
 @dataclass

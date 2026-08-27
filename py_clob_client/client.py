@@ -2,7 +2,7 @@ import logging
 import json
 import time
 from dataclasses import replace
-from typing import Optional
+from typing import Any, Optional
 from urllib.parse import quote
 
 from py_builder_signing_sdk.config import BuilderConfig
@@ -53,6 +53,7 @@ from .endpoints import (
     GET_MARKETS,
     GET_MARKET,
     GET_CLOB_MARKET,
+    GET_MARKETS_BY_TOKEN,
     GET_SAMPLING_SIMPLIFIED_MARKETS,
     GET_SAMPLING_MARKETS,
     GET_MARKET_TRADES_EVENTS,
@@ -85,6 +86,7 @@ from .clob_types import (
     PartialCreateOrderOptions,
     BookParams,
     MarketOrderArgs,
+    MarketByTokenResponse,
     PostOrdersArgs,
     FeeInfo,
     BuilderFeeRate,
@@ -1065,13 +1067,13 @@ class ClobClient:
             data=serialized,
         )
 
-    def get_sampling_markets(self, next_cursor="MA=="):
+    def get_sampling_markets(self, next_cursor="MA==") -> dict[str, Any]:
         """
         Get the current sampling markets
         """
         return self.__get_site_scoped_market_page(GET_SAMPLING_MARKETS, next_cursor)
 
-    def get_sampling_simplified_markets(self, next_cursor="MA=="):
+    def get_sampling_simplified_markets(self, next_cursor="MA==") -> dict[str, Any]:
         """
         Get the current sampling simplified markets
         """
@@ -1079,25 +1081,31 @@ class ClobClient:
             GET_SAMPLING_SIMPLIFIED_MARKETS, next_cursor
         )
 
-    def get_markets(self, next_cursor="MA=="):
+    def get_markets(self, next_cursor="MA==") -> dict[str, Any]:
         """
         Get the current markets
         """
         return self.__get_site_scoped_market_page(GET_MARKETS, next_cursor)
 
-    def get_simplified_markets(self, next_cursor="MA=="):
+    def get_simplified_markets(self, next_cursor="MA==") -> dict[str, Any]:
         """
         Get the current simplified markets
         """
         return self.__get_site_scoped_market_page(GET_SIMPLIFIED_MARKETS, next_cursor)
 
-    def get_market(self, condition_id):
+    def get_market(self, condition_id: str) -> dict[str, Any]:
         """
         Get a market by condition_id
         """
         return get("{}{}{}".format(self.host, GET_MARKET, condition_id))
 
-    def get_clob_market_info(self, condition_id: str):
+    def get_market_by_token(self, token_id: str) -> MarketByTokenResponse:
+        """
+        Get the parent market and mirror identifiers for a token.
+        """
+        return get("{}{}{}".format(self.host, GET_MARKETS_BY_TOKEN, token_id))
+
+    def get_clob_market_info(self, condition_id: str) -> dict[str, Any]:
         """
         Get V2 CLOB market info and populate local fee/tick/neg-risk caches.
         Supports both compact (`c/t/mts/nr/fd`) and expanded Kuest response shapes.

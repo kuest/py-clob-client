@@ -24,6 +24,30 @@ print(client.get_ok())
 print(client.get_server_time())
 ```
 
+## Market mirrors
+
+Market discovery responses expose optional mirror identifiers. The presence of
+`mirror_condition_id` identifies a mirrored market; token mappings use
+`mirror_token_id`, `mirror_primary_token_id`, and `mirror_secondary_token_id`.
+The methods continue to return dictionaries, with `TypedDict` definitions
+available from `py_clob_client.clob_types` and the package root.
+
+```python
+from py_clob_client import ClobClient
+
+client = ClobClient("https://clob.kuest.com")
+market = client.get_market_by_token("<token-id>")
+
+if market.get("mirror_condition_id"):
+    print(market["mirror_condition_id"])
+    print(market.get("mirror_primary_token_id"))
+
+clob_market = client.get_clob_market_info(market["condition_id"])
+for token in clob_market.get("t", []):
+    if token:
+        print(token.get("mirror_token_id"))
+```
+
 ## Wallet-Only Trading
 
 Kuest trading uses Deposit Wallet orders only. The public order path defaults to `signature_type=3` and rejects signature types `0`, `1`, and `2`.

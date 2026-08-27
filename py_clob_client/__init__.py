@@ -12,6 +12,13 @@ from .clob_types import (
     AssetType,
     PartialCreateOrderOptions,
     CreateOrderOptions,
+    ClobToken,
+    ClobFeeDetails,
+    ClobMarketInfo,
+    MarketToken,
+    MarketResponse,
+    MarketByTokenResponse,
+    MarketListResponse,
 )
 
 # RFQ exports
@@ -51,6 +58,13 @@ __all__ = [
     "AssetType",
     "PartialCreateOrderOptions",
     "CreateOrderOptions",
+    "ClobToken",
+    "ClobFeeDetails",
+    "ClobMarketInfo",
+    "MarketToken",
+    "MarketResponse",
+    "MarketByTokenResponse",
+    "MarketListResponse",
     # RFQ client
     "RfqClient",
     # RFQ input types
