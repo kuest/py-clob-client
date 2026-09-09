@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="kuest-py-clob-client",
-    version="2.0.12",
+    version="2.0.13",
     author="Kuest Engineering",
     author_email="engineering@kuest.com",
     maintainer="Kuest Engineering",
@@ -20,7 +20,7 @@ setuptools.setup(
         "eth-utils>=6.0.0",
         "kuest-py-eip712-structs==0.0.4",
         "kuest-py-order-utils==0.3.7",
-        "python-dotenv>=1.2.2",
+        "python-dotenv>=1.2.3",
         "kuest-py-builder-signing-sdk==2.0.2",
         "httpx[http2]>=0.28.1",
     ],
