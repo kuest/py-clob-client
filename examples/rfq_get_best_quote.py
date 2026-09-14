@@ -4,7 +4,7 @@ from dotenv import load_dotenv
 
 from py_clob_client.client import ClobClient
 from py_clob_client.clob_types import ApiCreds
-from py_clob_client.constants import AMOY
+from py_clob_client.constants import POLYGON
 from py_clob_client.rfq import GetRfqBestQuoteParams
 
 load_dotenv()
@@ -12,7 +12,7 @@ load_dotenv()
 
 def main():
     host = os.getenv("CLOB_API_URL", "https://clob.kuest.com")
-    chain_id = int(os.getenv("CHAIN_ID", AMOY))
+    chain_id = int(os.getenv("CHAIN_ID", POLYGON))
     key = os.getenv("PK")
     creds = ApiCreds(
         api_key=os.getenv("CLOB_API_KEY"),

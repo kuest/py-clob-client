@@ -44,7 +44,7 @@ from py_clob_client.rfq import (
     ApproveOrderParams,
 )
 from py_clob_client.order_builder.constants import BUY, SELL
-from py_clob_client.constants import AMOY
+from py_clob_client.constants import POLYGON
 
 load_dotenv()
 
@@ -81,7 +81,7 @@ def main():
     # Setup: Initialize both requester and quoter clients
     # ============================================
     host = os.getenv("CLOB_API_URL", "https://clob.kuest.com")
-    chain_id = int(os.getenv("CHAIN_ID", AMOY))
+    chain_id = int(os.getenv("CHAIN_ID", POLYGON))
 
     # Requester (creates the request and accepts the quote)
     requester_key = os.getenv("REQUESTER_PK")

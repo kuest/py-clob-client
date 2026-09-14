@@ -56,7 +56,7 @@ Kuest trading uses Deposit Wallet orders only. The public order path defaults to
 from py_clob_client.client import ClobClient
 
 HOST = "https://clob.kuest.com"
-CHAIN_ID = 80002
+CHAIN_ID = 137
 PRIVATE_KEY = "<owner-private-key>"
 DEPOSIT_WALLET = "<deposit-wallet-address>"
 
@@ -79,7 +79,7 @@ from py_clob_client.order_builder.constants import BUY
 
 client = ClobClient(
     "https://clob.kuest.com",
-    chain_id=80002,
+    chain_id=137,
     key="<owner-private-key>",
     signature_type=3,
     funder="<deposit-wallet-address>",
@@ -101,7 +101,7 @@ from py_clob_client.order_builder.constants import BUY
 
 client = ClobClient(
     "https://clob.kuest.com",
-    chain_id=80002,
+    chain_id=137,
     key="<owner-private-key>",
     signature_type=3,
     funder="<deposit-wallet-address>",
@@ -122,7 +122,7 @@ from py_clob_client.clob_types import OpenOrderParams
 
 client = ClobClient(
     "https://clob.kuest.com",
-    chain_id=80002,
+    chain_id=137,
     key="<owner-private-key>",
     signature_type=3,
     funder="<deposit-wallet-address>",
