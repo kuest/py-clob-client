@@ -18,10 +18,10 @@ setuptools.setup(
         "eth-account>=0.13.7",
         "eth-abi>=5.2.0",
         "eth-utils>=6.0.0",
-        "kuest-py-eip712-structs==0.0.4",
-        "kuest-py-order-utils==0.3.7",
+        "kuest-py-eip712-structs==0.0.5",
+        "kuest-py-order-utils==0.3.10",
         "python-dotenv>=1.2.3",
-        "kuest-py-builder-signing-sdk==2.0.2",
+        "kuest-py-builder-signing-sdk==2.0.3",
         "httpx[http2]>=0.28.1",
     ],
     project_urls={
