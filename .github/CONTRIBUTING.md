@@ -4,7 +4,7 @@ Contributions to `kuest-py-clob-client` are welcome. This document outlines the 
 
 ## Getting Started
 
-1. Fork `kuestcom/py-clob-client`.
+1. Fork `kuest/py-clob-client`.
 2. Clone your fork.
 3. Use Python 3.10 or newer. CI currently runs on Python 3.10.
 4. Create and activate a virtual environment, then install dependencies:

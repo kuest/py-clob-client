@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="kuest-py-clob-client",
-    version="2.0.14",
+    version="2.0.15",
     author="Kuest Engineering",
     author_email="engineering@kuest.com",
     maintainer="Kuest Engineering",
@@ -13,7 +13,7 @@ setuptools.setup(
     description="Python client for the Kuest CLOB",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/kuestcom/py-clob-client",
+    url="https://github.com/kuest/py-clob-client",
     install_requires=[
         "eth-account>=0.13.7",
         "eth-abi>=5.2.0",
@@ -25,7 +25,7 @@ setuptools.setup(
         "httpx[http2]>=0.28.1",
     ],
     project_urls={
-        "Bug Tracker": "https://github.com/kuestcom/py-clob-client/issues",
+        "Bug Tracker": "https://github.com/kuest/py-clob-client/issues",
     },
     classifiers=[
         "Programming Language :: Python :: 3",

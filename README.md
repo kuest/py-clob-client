@@ -4,7 +4,7 @@
 </h1>
 
 [![PyPI](https://img.shields.io/pypi/v/kuest-py-clob-client.svg)](https://pypi.org/project/kuest-py-clob-client)
-[![PR](https://github.com/kuestcom/py-clob-client/actions/workflows/pr.yml/badge.svg)](https://github.com/kuestcom/py-clob-client/actions/workflows/pr.yml)
+[![PR](https://github.com/kuest/py-clob-client/actions/workflows/pr.yml/badge.svg)](https://github.com/kuest/py-clob-client/actions/workflows/pr.yml)
 
 
 ## Installation
